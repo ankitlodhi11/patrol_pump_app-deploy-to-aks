@@ -8,11 +8,7 @@ stages:
       - job: terraforminit
         displayName: terraform init
         steps:
-        - task: CostGuardrails@1
+        - task: InfracostSetup@2
           inputs:
-            planPath: 'plan.json'
-            skipBudget: true
-            skipNarrative: true
-            skipGuardrails: true
-            autoApprove: true
-            extraArgs: 'terraform show -json tfplan | cost-guardrails --plan -'
+            apiKey: 'ico-tw0oH95vMImaw1AMin9xftV66ImsBg1R'
+            version: '0.10.x'
