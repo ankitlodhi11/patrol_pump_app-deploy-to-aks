@@ -13,10 +13,10 @@ stages:
       - job: terraforminit
         displayName: terraform init
         steps:
-        - task: InfracostSetup@2
+        - task: tfsec@1
           inputs:
-            apiKey: 'ico-tw0oH95vMImaw1AMin9xftV66ImsBg1R'
-            version: '0.10.x'
+            version: 'v1.26.0'
+            debug: true
   - stage: terraform 
     jobs:
       - job: 
