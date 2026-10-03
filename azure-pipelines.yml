@@ -2,8 +2,8 @@ trigger:
 - main
 - feature/*
 stages:
-  - stage: terraforminit
-    displayName: terraform init
+  - stage: scan
+    displayName: scan
     jobs:
       - job: terraforminit
         displayName: terraform init
