@@ -2,6 +2,10 @@ trigger:
 - main
 - feature/*
 
+parameters:
+- name: scan
+  displayName: infracost
+  type: boolean
 stages:
   - stage: scan
     displayName: scan
