@@ -7,16 +7,16 @@ parameters:
   displayName: infracost
   type: boolean
 stages:
-  - stage: scan
-    displayName: scan
-    jobs:
-      - job: terraforminit
-        displayName: terraform init
-        steps:
-        - task: tfsec@1
-          inputs:
-            version: 'v1.26.0'
-            debug: true
+  # - stage: scan
+  #   displayName: scan
+  #   jobs:
+  #     - job: terraforminit
+  #       displayName: terraform init
+  #       steps:
+  #       - task: tfsec@1
+  #         inputs:
+  #           version: 'v1.26.0'
+  #           debug: true
   - stage: terraform 
     jobs:
       - job: 
