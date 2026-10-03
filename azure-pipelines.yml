@@ -1,6 +1,7 @@
 trigger:
 - main
 - feature/*
+
 stages:
   - stage: scan
     displayName: scan
@@ -12,3 +13,24 @@ stages:
           inputs:
             apiKey: 'ico-tw0oH95vMImaw1AMin9xftV66ImsBg1R'
             version: '0.10.x'
+  - stage: terraform 
+    jobs:
+      - job: 
+        steps:
+        - task: TerraformTask@5
+          inputs:
+            provider: 'azurerm'
+            command: 'init'
+            backendServiceArm: 'data'
+            backendAzureRmStorageAccountName: 'stagefile123321'
+            backendAzureRmContainerName: 'tfstate'
+            backendAzureRmKey: 'pt.terraform.tfstate'
+  - stage: plan 
+    jobs:
+      - job: 
+        steps:
+        - task: TerraformTask@5
+          inputs:
+            provider: 'azurerm'
+            command: 'plan'
+            environmentServiceNameAzureRM: 'data'
