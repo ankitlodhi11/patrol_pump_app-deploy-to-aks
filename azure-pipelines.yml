@@ -4,20 +4,40 @@ trigger:
 
 parameters:
 - name: scan
-  displayName: infracost
+  displayName: scan tool
   type: boolean
+  default: false
+
+- name: tfsec
+  displayName: tfsec tool
+  type: boolean
+  default: false
 stages:
-  # - stage: scan
-  #   displayName: scan
-  #   jobs:
-  #     - job: terraforminit
-  #       displayName: terraform init
-  #       steps:
-  #       - task: tfsec@1
-  #         inputs:
-  #           version: 'v1.26.0'
-  #           debug: true
+  - stage: scan
+    displayName: checkof
+    jobs:
+      - job: scan
+        displayName: checkof'
+        condition: eq('${{ parameters.scan }}', true)
+        steps:
+        - task: PowerShell@2
+          inputs:
+            targetType: 'inline'
+            script: 'checkov -d .'
+  - stage: tfsec
+    displayName: tfsec tool
+    jobs:
+      - job: scan
+        displayName: tfsec
+        condition: eq('${{ parameters.tfsec }}', true)
+        steps:
+        - task: PowerShell@2
+          inputs:
+            targetType: 'inline'
+            script: 'tfsec .'
   - stage: terraform 
+    displayName: init
+    dependsOn:  []
     jobs:
       - job: 
         steps:
