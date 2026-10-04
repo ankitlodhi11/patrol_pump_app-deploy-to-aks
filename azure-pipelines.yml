@@ -3,40 +3,39 @@ trigger:
 - feature/*
 pool: 
  name: dhurander
-# parameters:
-# - name: scan
-#   displayName: scan tool
-#   type: boolean
-#   default: false
+parameters:
+- name: scan
+  displayName: scan tool
+  type: boolean
+  default: false
 
-# - name: tfsec
-#   displayName: tfsec tool
-#   type: boolean
-#   default: false
-# stages:
-#   - stage: scan
-#     displayName: checkof
-#     jobs:
-#       - job: scan
-#         displayName: checkof'
-#         condition: eq('${{ parameters.scan }}', true)
-#         steps:
-#         - task: PowerShell@2
-#           inputs:
-#             targetType: 'inline'
-#             script: 'checkov -d .'
-#   - stage: tfsec
-#     displayName: tfsec tool
-#     jobs:
-#       - job: scan
-#         displayName: tfsec
-#         condition: eq('${{ parameters.tfsec }}', true)
-#         steps:
-#         - task: PowerShell@2
-#           inputs:
-#             targetType: 'inline'
-#             script: 'tfsec .'
+- name: tfsec
+  displayName: tfsec tool
+  type: boolean
+  default: false
 stages:
+  - stage: scan
+    displayName: checkof
+    jobs:
+      - job: scan
+        displayName: checkof'
+        condition: eq('${{ parameters.scan }}', true)
+        steps:
+        - task: PowerShell@2
+          inputs:
+            targetType: 'inline'
+            script: 'checkov -d .'
+  - stage: tfsec
+    displayName: tfsec tool
+    jobs:
+      - job: scan
+        displayName: tfsec
+        condition: eq('${{ parameters.tfsec }}', true)
+        steps:
+        - task: PowerShell@2
+          inputs:
+            targetType: 'inline'
+            script: 'tfsec .'
   - stage: 
     jobs:
      -
@@ -55,4 +54,4 @@ stages:
            provider: 'azurerm'
            command: 'plan'
            environmentServiceNameAzureRM: 'data'
-  
+          
