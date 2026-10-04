@@ -54,8 +54,5 @@ stages:
          inputs:
            provider: 'azurerm'
            command: 'plan'
-           backendServiceArm: 'data'
-           backendAzureRmStorageAccountName: 'stagefile123321'
-           backendAzureRmContainerName: 'tfstate'
-           backendAzureRmKey: 'pt.terraform.tfstate'
+           environmentServiceNameAzureRM: 'data'
   
