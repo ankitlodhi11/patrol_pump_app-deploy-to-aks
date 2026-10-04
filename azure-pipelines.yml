@@ -50,6 +50,7 @@ stages:
             backendAzureRmStorageAccountName: 'stagefile123321'
             backendAzureRmContainerName: 'tfstate'
             backendAzureRmKey: 'pt.terraform.tfstate'
+            commandOptions: '-reconfigure'
   - stage: plan 
     jobs:
       - job: 
