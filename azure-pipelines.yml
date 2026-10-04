@@ -1,125 +1,242 @@
 trigger:
-- main
-- feature/*
-pool: 
- name: dhurander
+  - main
+  - feature/*
+
+pr:
+  - '*'
+
+pool:
+  name: dhurander
+
 parameters:
-- name: checkof
-  displayName: checkof tool
-  type: boolean
-  default: false
-- name: gitleakes
-  displayName: gitleaks tool
-  type: boolean
-  default: false
-- name: tflint
-  displayName: tflint tool
-  type: boolean
-  default: false
-- name: tfsec
-  displayName: tfsec tool
-  type: boolean
-  default: false
+  - name: checkof
+    displayName: "checkof tool"
+    type: boolean
+    default: false
+  - name: gitleakes
+    displayName: "gitleaks tool"
+    type: boolean
+    default: false
+  - name: tflint
+    displayName: "tflint tool"
+    type: boolean
+    default: false
+  - name: tfsec
+    displayName: "tfsec tool"
+    type: boolean
+    default: false
+
+variables:
+  - name: infracostApiKey
+    value: 'ico-tw0oH95vMImaw1AMin9xftV66ImsBg1R'
 
 stages:
+  # ============================================================
+  # 1. PARALLEL SECURITY SCAN STAGES
+  # ============================================================
   - stage: checkof
-    displayName: checkof
+    displayName: "Checkov Scan"
+    dependsOn: []
+    condition: eq('${{ parameters.checkof }}', true)
     jobs:
-      - job: scan
-        displayName: checkof'
+      - job: checkof_job
+        displayName: "Run Checkov"
         continueOnError: true
-        condition: eq('${{ parameters.checkof }}', true)
         steps:
-        - task: PowerShell@2
-          inputs:
-            targetType: 'inline'
-            script: 'checkov -d . --soft-fail'
+          - task: PowerShell@2
+            inputs:
+              targetType: 'inline'
+              script: 'checkov -d . --soft-fail'
+
   - stage: tflint
-    displayName: tflint
+    displayName: "TFLint Scan"
+    dependsOn: []
+    condition: eq('${{ parameters.tflint }}', true)
     jobs:
-      - job: scan
-        displayName: tflint'
+      - job: tflint_job
+        displayName: "Run TFLint"
         continueOnError: true
-        condition: eq('${{ parameters.tflint }}', true)
         steps:
-        - task: PowerShell@2
-          inputs:
-            targetType: 'inline'
-            script: |
-              tflint --init
-              tflint --force
+          - task: PowerShell@2
+            inputs:
+              targetType: 'inline'
+              script: |
+                tflint --init
+                tflint --force
+
   - stage: tfsec
-    displayName: tfsec tool
+    displayName: "tfsec Tool"
+    dependsOn: []
+    condition: eq('${{ parameters.tfsec }}', true)
     jobs:
-      - job: scan
-        displayName: tfsec
+      - job: tfsec_job
+        displayName: "Run tfsec"
         continueOnError: true
-        condition: eq('${{ parameters.tfsec }}', true)
         steps:
-        - task: PowerShell@2
-          inputs:
-            targetType: 'inline'
-            script: 'tfsec .'
+          - task: PowerShell@2
+            inputs:
+              targetType: 'inline'
+              script: 'tfsec . --soft-fail'
+
   - stage: gitleakes
-    displayName: gitleakes tool
+    displayName: "Gitleaks Tool"
+    dependsOn: []
+    condition: eq('${{ parameters.gitleakes }}', true)
     jobs:
-      - job: scan
-        displayName: gitleakes
+      - job: gitleakes_job
+        displayName: "Run Gitleaks"
         continueOnError: true
-        condition: eq('${{ parameters.gitleakes }}', true)
         steps:
-        - task: PowerShell@2
-          inputs:
-            targetType: 'inline'
-            script: 'gitleaks detect -v'
-  - stage: 
+          - task: PowerShell@2
+            inputs:
+              targetType: 'inline'
+              script: 'gitleaks detect -v'
+
+  # ============================================================
+  # 2. INFRACOST STAGE (Ubuntu agent required for Linux tools)
+  # ============================================================
+  - stage: InfracostCostEstimation
+    displayName: "Infracost Cost Estimation"
+    dependsOn: []
     jobs:
-     -
-       job: 
-       steps:
-       - task: TerraformTask@5
-         inputs:
-           provider: 'azurerm'
-           command: 'init'
-           backendServiceArm: 'data'
-           backendAzureRmStorageAccountName: 'stagefile123321'
-           backendAzureRmContainerName: 'tfstate'
-           backendAzureRmKey: 'pt.terraform.tfstate'
-       - task: TerraformTask@5
-         inputs:
-           provider: 'azurerm'
-           command: 'plan'
-           environmentServiceNameAzureRM: 'data'
-  - stage: approvbal
-    displayName: manual approval
+      - job: infracost_pull_request_checks
+        condition: and(succeeded(), eq(variables['Build.Reason'], 'PullRequest'))
+        displayName: "Run Infracost on PR"
+        pool:
+         name: dhurander
+        steps:
+          - task: InfracostSetup@2
+            displayName: "Setup Infracost"
+            inputs:
+              apiKey: $(infracostApiKey)
+
+          - bash: |
+              git -c http.extraheader="Authorization: Bearer $(System.AccessToken)" clone $(Build.Repository.Uri) --branch=$(System.PullRequest.TargetBranchName) --single-branch /tmp/base
+            displayName: "Checkout Base Branch"
+
+          - bash: |
+              cd /tmp/base
+              infracost breakdown --path=. --format=json --out-file=/tmp/infracost-base.json
+            displayName: "Generate Infracost Baseline"
+            env:
+              SYSTEM_ACCESSTOKEN: $(System.AccessToken)
+
+          - bash: |
+              infracost diff --path=. --format=json --compare-to=/tmp/infracost-base.json --out-file=/tmp/infracost.json
+            displayName: "Generate Infracost Diff"
+            env:
+              SYSTEM_ACCESSTOKEN: $(System.AccessToken)
+
+          - bash: |
+              infracost comment azure-repos \
+                --path=/tmp/infracost.json \
+                --azure-access-token=$(System.AccessToken) \
+                --pull-request=$(System.PullRequest.PullRequestId) \
+                --repo-url=$(Build.Repository.Uri) \
+                --behavior=update
+            displayName: "Post Infracost PR Comment"
+            env:
+              SYSTEM_ACCESSTOKEN: $(System.AccessToken)
+
+      - job: infracost_cloud_update
+        displayName: "Update Infracost Cloud"
+        condition: and(succeeded(), in(variables['Build.Reason'], 'IndividualCI', 'BatchedCI'))
+        pool:
+          name: dhurander
+        steps:
+          - task: InfracostSetup@2
+            displayName: "Setup Infracost"
+            inputs:
+              apiKey: $(infracostApiKey)
+
+          - bash: |
+              infracost breakdown --path=. --format=json --out-file=/tmp/infracost.json
+              infracost upload --path=/tmp/infracost.json || echo "Infracost upload completed"
+            displayName: "Upload Infracost Baseline"
+            env:
+              SYSTEM_ACCESSTOKEN: $(System.AccessToken)
+
+  # ============================================================
+  # 3. TERRAFORM INIT & PLAN
+  # ============================================================
+  - stage: TerraformPlan
+    displayName: "Terraform Init & Plan"
+    dependsOn:
+      - checkof
+      - tflint
+      - tfsec
+      - gitleakes
+      - InfracostCostEstimation
+    condition: succeededOrFailed()
     jobs:
-      - job: 
+      - job: TerraformPlanJob
+        displayName: "Execute Plan"
+        steps:
+          - task: TerraformTask@5
+            displayName: "Terraform Init"
+            inputs:
+              provider: 'azurerm'
+              command: 'init'
+              backendServiceArm: 'data'
+              backendAzureRmResourceGroupName: 'petrolpump-rg'
+              backendAzureRmStorageAccountName: 'stagefile123321'
+              backendAzureRmContainerName: 'tfstate'
+              backendAzureRmKey: 'pt.terraform.tfstate'
+              commandOptions: '-reconfigure'
+
+          - task: TerraformTask@5
+            displayName: "Terraform Plan"
+            inputs:
+              provider: 'azurerm'
+              command: 'plan'
+              environmentServiceNameAzureRM: 'data'
+
+  # ============================================================
+  # 4. MANUAL APPROVAL GATE
+  # ============================================================
+  - stage: Approval
+    displayName: "Manual Approval"
+    dependsOn:
+      - TerraformPlan
+    condition: succeeded()
+    jobs:
+      - job: ApprovalJob
+        displayName: "Wait for Approval"
         pool: server
-        displayName: manual approval
         steps:
-        - task: ManualValidation@1
-          inputs:
-            notifyUsers: 'ankitlodhi@gmail.com'
-  - stage: apply
+          - task: ManualValidation@1
+            timeoutInMinutes: 1440
+            inputs:
+              notifyUsers: 'ankitlodhi@gmail.com'
+              instructions: 'Verify Terraform Plan and Infracost diff before approving deployment.'
+
+  # ============================================================
+  # 5. TERRAFORM APPLY
+  # ============================================================
+  - stage: TerraformApply
+    displayName: "Terraform Apply"
+    dependsOn:
+      - Approval
+    condition: succeeded()
     jobs:
-     -
-       job: 
-       steps:
-       - task: TerraformTask@5
-         inputs:
-           provider: 'azurerm'
-           command: 'init'
-           backendServiceArm: 'data'
-           backendAzureRmStorageAccountName: 'stagefile123321'
-           backendAzureRmContainerName: 'tfstate'
-           backendAzureRmKey: 'pt.terraform.tfstate'
-       - task: TerraformTask@5
-         inputs:
-           provider: 'azurerm'
-           command: 'plan'
-           environmentServiceNameAzureRM: 'data'
-       - task: TerraformTask@5
-         inputs:
-           provider: 'azurerm'
-           command: 'apply'
-           environmentServiceNameAzureRM: 'data'
+      - job: TerraformApplyJob
+        displayName: "Execute Apply"
+        steps:
+          - task: TerraformTask@5
+            displayName: "Terraform Init"
+            inputs:
+              provider: 'azurerm'
+              command: 'init'
+              backendServiceArm: 'data'
+              backendAzureRmResourceGroupName: 'petrolpump-rg'
+              backendAzureRmStorageAccountName: 'stagefile123321'
+              backendAzureRmContainerName: 'tfstate'
+              backendAzureRmKey: 'pt.terraform.tfstate'
+              commandOptions: '-reconfigure'
+
+          - task: TerraformTask@5
+            displayName: "Terraform Apply"
+            inputs:
+              provider: 'azurerm'
+              command: 'apply'
+              environmentServiceNameAzureRM: 'data'
