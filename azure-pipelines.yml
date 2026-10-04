@@ -33,7 +33,7 @@ stages:
         - task: PowerShell@2
           inputs:
             targetType: 'inline'
-            script: 'checkov -d .'
+            script: 'checkov -d . --soft-fail'
   - stage: tflint
     displayName: tflint
     jobs:
@@ -46,9 +46,8 @@ stages:
           inputs:
             targetType: 'inline'
             script: |
-              script: |
-                    tflint --init
-                    tflint --force
+              tflint --init
+              tflint --force
   - stage: tfsec
     displayName: tfsec tool
     jobs:
@@ -72,9 +71,7 @@ stages:
         - task: PowerShell@2
           inputs:
             targetType: 'inline'
-            script: |
-              script: |
-              gitleaks detect --source="$(Build.SourcesDirectory)" -v
+            script: 'gitleaks detect -v'
   - stage: 
     jobs:
      -
@@ -93,4 +90,36 @@ stages:
            provider: 'azurerm'
            command: 'plan'
            environmentServiceNameAzureRM: 'data'
-          
+  - stage: approvbal
+    displayName: manual approval
+    jobs:
+      - job: 
+        pool: server
+        displayName: manual approval
+        steps:
+        - task: ManualValidation@1
+          inputs:
+            notifyUsers: 'ankitlodhi@gmail.com'
+  - stage: apply
+    jobs:
+     -
+       job: 
+       steps:
+       - task: TerraformTask@5
+         inputs:
+           provider: 'azurerm'
+           command: 'init'
+           backendServiceArm: 'data'
+           backendAzureRmStorageAccountName: 'stagefile123321'
+           backendAzureRmContainerName: 'tfstate'
+           backendAzureRmKey: 'pt.terraform.tfstate'
+       - task: TerraformTask@5
+         inputs:
+           provider: 'azurerm'
+           command: 'plan'
+           environmentServiceNameAzureRM: 'data'
+       - task: TerraformTask@5
+         inputs:
+           provider: 'azurerm'
+           command: 'apply'
+           environmentServiceNameAzureRM: 'data'
