@@ -208,7 +208,6 @@ stages:
             timeoutInMinutes: 1440
             inputs:
               notifyUsers: 'ankitlodhi@gmail.com'
-              instructions: 'Verify Terraform Plan and Infracost diff before approving deployment.'
 
   # ============================================================
   # 5. TERRAFORM APPLY
