@@ -4,38 +4,77 @@ trigger:
 pool: 
  name: dhurander
 parameters:
-- name: scan
-  displayName: scan tool
+- name: checkof
+  displayName: checkof tool
   type: boolean
   default: false
-
+- name: gitleakes
+  displayName: gitleaks tool
+  type: boolean
+  default: false
+- name: tflint
+  displayName: tflint tool
+  type: boolean
+  default: false
 - name: tfsec
   displayName: tfsec tool
   type: boolean
   default: false
+
 stages:
-  - stage: scan
+  - stage: checkof
     displayName: checkof
     jobs:
       - job: scan
         displayName: checkof'
-        condition: eq('${{ parameters.scan }}', true)
+        continueOnError: true
+        condition: eq('${{ parameters.checkof }}', true)
         steps:
         - task: PowerShell@2
           inputs:
             targetType: 'inline'
             script: 'checkov -d .'
+  - stage: tflint
+    displayName: tflint
+    jobs:
+      - job: scan
+        displayName: tflint'
+        continueOnError: true
+        condition: eq('${{ parameters.tflint }}', true)
+        steps:
+        - task: PowerShell@2
+          inputs:
+            targetType: 'inline'
+            script: |
+              script: |
+                    tflint --init
+                    tflint --force
   - stage: tfsec
     displayName: tfsec tool
     jobs:
       - job: scan
         displayName: tfsec
+        continueOnError: true
         condition: eq('${{ parameters.tfsec }}', true)
         steps:
         - task: PowerShell@2
           inputs:
             targetType: 'inline'
             script: 'tfsec .'
+  - stage: gitleakes
+    displayName: gitleakes tool
+    jobs:
+      - job: scan
+        displayName: gitleakes
+        continueOnError: true
+        condition: eq('${{ parameters.gitleakes }}', true)
+        steps:
+        - task: PowerShell@2
+          inputs:
+            targetType: 'inline'
+            script: |
+              script: |
+              gitleaks detect --source="$(Build.SourcesDirectory)" -v
   - stage: 
     jobs:
      -
