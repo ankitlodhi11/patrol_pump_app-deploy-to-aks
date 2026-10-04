@@ -1,7 +1,8 @@
 trigger:
 - main
 - feature/*
-
+pool: 
+ name: dhurander
 parameters:
 - name: scan
   displayName: scan tool
